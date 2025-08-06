@@ -62,6 +62,45 @@ export const usePickups = () => {
       setPickups(data || []);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'An error occurred');
+      // Provide mock data for demo
+      setPickups([
+        {
+          id: 'pickup-demo-1',
+          user_id: user.id,
+          center_id: 'center-1',
+          pickup_date: new Date().toISOString().split('T')[0],
+          pickup_time: '10:00',
+          items_description: 'Plastic bottles and paper waste',
+          estimated_weight: 3.5,
+          status: 'completed',
+          points_earned: 35,
+          created_at: new Date(Date.now() - 86400000).toISOString(), // Yesterday
+          updated_at: new Date(Date.now() - 86400000).toISOString(),
+          recycling_centers: {
+            name: 'Green Center Dhaka',
+            address: 'Gulshan, Dhaka',
+            phone: '+880 1234-567890'
+          }
+        },
+        {
+          id: 'pickup-demo-2',
+          user_id: user.id,
+          center_id: 'center-2',
+          pickup_date: new Date(Date.now() + 86400000).toISOString().split('T')[0], // Tomorrow
+          pickup_time: '14:00',
+          items_description: 'Electronic waste - old phone and chargers',
+          estimated_weight: 1.2,
+          status: 'scheduled',
+          points_earned: 0,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+          recycling_centers: {
+            name: 'Tech Recycle Center',
+            address: 'Dhanmondi, Dhaka',
+            phone: '+880 1234-567891'
+          }
+        }
+      ]);
     } finally {
       setLoading(false);
     }

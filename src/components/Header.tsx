@@ -5,7 +5,6 @@ interface HeaderProps {
   currentUser: any;
   onLogin?: () => void;
   onLogout?: () => void;
-  onDashboard?: () => void;
   onBackToHome?: () => void;
 }
 
@@ -13,7 +12,6 @@ const Header: React.FC<HeaderProps> = ({
   currentUser, 
   onLogin, 
   onLogout, 
-  onDashboard, 
   onBackToHome 
 }) => {
   const [isMenuOpen, setIsMenuOpen] = React.useState(false);
@@ -44,12 +42,9 @@ const Header: React.FC<HeaderProps> = ({
           <div className="hidden md:flex items-center space-x-4">
             {currentUser ? (
               <>
-                <button
-                  onClick={onDashboard}
-                  className="text-emerald-600 hover:text-emerald-700 font-medium transition-colors"
-                >
-                  Dashboard
-                </button>
+                <span className="text-gray-700 font-medium">
+                  Welcome, {currentUser.name}
+                </span>
                 <button
                   onClick={onLogout}
                   className="bg-gray-100 hover:bg-gray-200 text-gray-700 px-4 py-2 rounded-lg transition-colors"
@@ -99,12 +94,9 @@ const Header: React.FC<HeaderProps> = ({
               </a>
               {currentUser ? (
                 <>
-                  <button
-                    onClick={onDashboard}
-                    className="text-left text-emerald-600 font-medium"
-                  >
-                    Dashboard
-                  </button>
+                  <span className="text-gray-700 font-medium">
+                    Welcome, {currentUser.name}
+                  </span>
                   <button
                     onClick={onLogout}
                     className="text-left text-gray-700"

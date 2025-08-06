@@ -14,18 +14,14 @@ function App() {
   const { user, profile, loading, signOut } = useAuth();
   const { moderator, signOut: moderatorSignOut } = useModerator();
   const [showAuth, setShowAuth] = useState(false);
-  const [showDashboard, setShowDashboard] = useState(false);
   const [showModeratorLogin, setShowModeratorLogin] = useState(false);
-  const [showModeratorDashboard, setShowModeratorDashboard] = useState(false);
 
   const handleLogout = async () => {
     await signOut();
-    setShowDashboard(false);
   };
 
   const handleModeratorLogout = () => {
     moderatorSignOut();
-    setShowModeratorDashboard(false);
     setShowModeratorLogin(false);
   };
 
@@ -44,26 +40,24 @@ function App() {
   if (showModeratorLogin && !moderator) {
     return (
       <ModeratorLogin 
-        onSuccess={() => {
-          setShowModeratorLogin(false);
-          setShowModeratorDashboard(true);
-        }}
+        onSuccess={() => setShowModeratorLogin(false)}
       />
     );
   }
 
-  // Show moderator dashboard if logged in
-  if (showModeratorDashboard && moderator) {
+  // Show moderator dashboard if moderator is logged in
+  if (moderator) {
     return <ModeratorDashboard onLogout={handleModeratorLogout} />;
   }
 
-  if (showDashboard && user && profile) {
+  // Show user dashboard if user is logged in
+  if (user && profile) {
     return (
       <div className="min-h-screen bg-gray-50">
         <Header 
           currentUser={profile} 
           onLogout={handleLogout}
-          onBackToHome={() => setShowDashboard(false)}
+          onBackToHome={handleLogout}
         />
         <Dashboard user={profile} />
       </div>
@@ -76,7 +70,6 @@ function App() {
         currentUser={profile} 
         onLogin={() => setShowAuth(true)}
         onLogout={handleLogout}
-        onDashboard={() => setShowDashboard(true)}
       />
       <Hero onGetStarted={() => setShowAuth(true)} />
       <Features />

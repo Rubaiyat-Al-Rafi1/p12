@@ -8,15 +8,15 @@ interface DashboardProps {
     id: string;
     name: string;
     email: string;
-    type: string;
+    user_type: string;
     points?: number;
-    joinDate: string;
+    created_at: string;
   };
 }
 
 const Dashboard: React.FC<DashboardProps> = ({ user }) => {
   const renderDashboard = () => {
-    switch (user.type) {
+    switch (user.user_type) {
       case 'consumer':
         return <ConsumerDashboard user={user} />;
       case 'business':
