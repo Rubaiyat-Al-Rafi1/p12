@@ -62,7 +62,7 @@ interface PickupWithDetails {
 
 export const useModerator = () => {
   const [moderator, setModerator] = useState<Moderator | null>(null);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   const signIn = async (email: string, password: string) => {
@@ -335,6 +335,7 @@ export const useModerator = () => {
 
   // Check for existing session on mount
   useEffect(() => {
+    setLoading(true);
     const savedSession = localStorage.getItem('moderator_session');
     if (savedSession) {
       try {
@@ -344,6 +345,7 @@ export const useModerator = () => {
         localStorage.removeItem('moderator_session');
       }
     }
+    setLoading(false);
   }, []);
 
   return {

@@ -12,7 +12,7 @@ import ModeratorDashboard from './components/ModeratorDashboard';
 
 function App() {
   const { user, profile, loading, signOut } = useAuth();
-  const { moderator, signOut: moderatorSignOut } = useModerator();
+  const { moderator, loading: moderatorLoading, signOut: moderatorSignOut } = useModerator();
   const [showAuth, setShowAuth] = useState(false);
   const [showModeratorLogin, setShowModeratorLogin] = useState(false);
 
@@ -25,12 +25,12 @@ function App() {
     setShowModeratorLogin(false);
   };
 
-  if (loading) {
+  if (loading || moderatorLoading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-emerald-600 mx-auto mb-4"></div>
-          <p className="text-gray-600">Loading GreenLoop...</p>
+          <p className="text-gray-600">Loading...</p>
         </div>
       </div>
     );
@@ -39,9 +39,7 @@ function App() {
   // Show moderator login if requested
   if (showModeratorLogin && !moderator) {
     return (
-      <ModeratorLogin 
-        onSuccess={() => setShowModeratorLogin(false)}
-      />
+      <ModeratorLogin onSuccess={() => {}} />
     );
   }
 

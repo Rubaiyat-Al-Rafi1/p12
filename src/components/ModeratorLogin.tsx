@@ -3,10 +3,10 @@ import { Shield, Eye, EyeOff } from 'lucide-react';
 import { useModerator } from '../hooks/useModerator';
 
 interface ModeratorLoginProps {
-  onSuccess: () => void;
+  onSuccess?: () => void;
 }
 
-const ModeratorLogin: React.FC<ModeratorLoginProps> = ({ onSuccess }) => {
+const ModeratorLogin: React.FC<ModeratorLoginProps> = ({ onSuccess = () => {} }) => {
   const { signIn, loading, error } = useModerator();
   const [showPassword, setShowPassword] = useState(false);
   const [formData, setFormData] = useState({
@@ -19,7 +19,8 @@ const ModeratorLogin: React.FC<ModeratorLoginProps> = ({ onSuccess }) => {
     
     const { data, error } = await signIn(formData.email, formData.password);
     if (data && !error) {
-      onSuccess();
+      // The App component will automatically redirect to moderator dashboard
+      // when moderator state is set, so we don't need to do anything here
     }
   };
 
