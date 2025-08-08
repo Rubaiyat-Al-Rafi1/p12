@@ -92,7 +92,17 @@ const ModeratorLogin: React.FC<ModeratorLoginProps> = ({ onSuccess = () => {} })
           <h3 className="text-sm font-medium text-gray-900 mb-2">Demo Credentials</h3>
           <p className="text-xs text-gray-600">Email: moderator@gmail.com</p>
           <p className="text-xs text-gray-600">Password: md1234</p>
-          <p className="text-xs text-red-600 mt-2">Note: Use these exact credentials to access the moderator panel</p>
+          <p className="text-xs text-red-600 mt-2">⚠️ Use these exact credentials to access the moderator panel</p>
+          <div className="mt-3 p-2 bg-blue-50 border border-blue-200 rounded">
+            <p className="text-xs text-blue-700 font-medium">Features Available:</p>
+            <ul className="text-xs text-blue-600 mt-1 space-y-1">
+              <li>• View and manage all user pickups</li>
+              <li>• Assign pickups to Green Riders</li>
+              <li>• Monitor user activity and statistics</li>
+              <li>• Manage Green Riders fleet</li>
+              <li>• Update pickup status and priorities</li>
+            </ul>
+          </div>
         </div>
       </div>
     </div>

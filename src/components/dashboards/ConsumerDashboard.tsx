@@ -65,8 +65,12 @@ const ConsumerDashboard: React.FC<ConsumerDashboardProps> = ({ user }) => {
         items_description: '',
         estimated_weight: 1,
       });
+      
+      // Show success message
+      alert('Pickup scheduled successfully! You will be notified when a rider is assigned.');
     } catch (error) {
       console.error('Error scheduling pickup:', error);
+      alert('Failed to schedule pickup. Please try again.');
     }
   };
 
