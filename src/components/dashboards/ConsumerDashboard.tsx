@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { usePickups } from '../../hooks/usePickups';
 import { useRecyclingCenters } from '../../hooks/useRecyclingCenters';
+import { useAuth } from '../../hooks/useAuth';
 import { 
   Trophy, 
   MapPin, 
@@ -26,6 +27,7 @@ interface ConsumerDashboardProps {
 const ConsumerDashboard: React.FC<ConsumerDashboardProps> = ({ user }) => {
   const { pickups, createPickup, loading: pickupsLoading } = usePickups();
   const { centers, loading: centersLoading } = useRecyclingCenters();
+  const { profile } = useAuth(); // Get updated profile with current points
   const [activeTab, setActiveTab] = useState('overview');
   const [showPickupModal, setShowPickupModal] = useState(false);
   const [pickupForm, setPickupForm] = useState({
@@ -43,8 +45,11 @@ const ConsumerDashboard: React.FC<ConsumerDashboardProps> = ({ user }) => {
     { id: 'rewards', label: 'Rewards', icon: Trophy }
   ];
 
+  // Use profile points if available, fallback to user points
+  const currentPoints = profile?.points || user.points || 0;
+
   const stats = [
-    { label: 'GreenPoints', value: user.points, icon: Trophy, color: 'text-yellow-600 bg-yellow-100' },
+    { label: 'GreenPoints', value: currentPoints, icon: Trophy, color: 'text-yellow-600 bg-yellow-100' },
     { label: 'Items Recycled', value: pickups.filter(p => p.status === 'completed').length, icon: Package, color: 'text-green-600 bg-green-100' },
     { label: 'CO₂ Saved', value: `${Math.round(pickups.filter(p => p.status === 'completed').reduce((acc, p) => acc + (p.estimated_weight * 0.5), 0))}kg`, icon: Leaf, color: 'text-blue-600 bg-blue-100' },
     { label: 'Pickups This Month', value: pickups.filter(p => new Date(p.created_at).getMonth() === new Date().getMonth()).length, icon: Calendar, color: 'text-purple-600 bg-purple-100' }
@@ -67,7 +72,7 @@ const ConsumerDashboard: React.FC<ConsumerDashboardProps> = ({ user }) => {
       });
       
       // Show success message
-      alert('Pickup scheduled successfully! You will be notified when a rider is assigned.');
+      alert('Pickup scheduled successfully! A moderator will assign a Green Rider to your pickup soon.');
     } catch (error) {
       console.error('Error scheduling pickup:', error);
       alert('Failed to schedule pickup. Please try again.');
@@ -191,11 +196,154 @@ const ConsumerDashboard: React.FC<ConsumerDashboardProps> = ({ user }) => {
                       {pickup.points_earned > 0 && (
                         <p className="text-sm text-gray-500">+{pickup.points_earned} points</p>
                       )}
+                      {pickup.status === 'in_progress' && (
+                        <p className="text-xs text-blue-600 mt-1">Rider assigned!</p>
+                      )}
                     </div>
                   </div>
                 ))}
               </div>
             )}
+          </div>
+        </div>
+      )}
+
+      {activeTab === 'pickups' && (
+        <div className="space-y-6">
+          {/* Pickup Status Summary */}
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+            <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-100">
+              <div className="text-center">
+                <p className="text-2xl font-bold text-yellow-600">{pickups.filter(p => p.status === 'scheduled').length}</p>
+                <p className="text-sm text-gray-600">Scheduled</p>
+              </div>
+            </div>
+            <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-100">
+              <div className="text-center">
+                <p className="text-2xl font-bold text-blue-600">{pickups.filter(p => p.status === 'in_progress').length}</p>
+                <p className="text-sm text-gray-600">In Progress</p>
+              </div>
+            </div>
+            <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-100">
+              <div className="text-center">
+                <p className="text-2xl font-bold text-green-600">{pickups.filter(p => p.status === 'completed').length}</p>
+                <p className="text-sm text-gray-600">Completed</p>
+              </div>
+            </div>
+            <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-100">
+              <div className="text-center">
+                <p className="text-2xl font-bold text-emerald-600">{pickups.filter(p => p.status === 'completed').reduce((acc, p) => acc + p.points_earned, 0)}</p>
+                <p className="text-sm text-gray-600">Points Earned</p>
+              </div>
+            </div>
+          </div>
+
+          {/* All Pickups List */}
+          <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
+            <div className="flex justify-between items-center mb-4">
+              <h3 className="text-lg font-semibold text-gray-900">All Pickups</h3>
+              <button
+                onClick={() => setShowPickupModal(true)}
+                className="flex items-center px-4 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition-colors"
+              >
+                <Plus className="h-4 w-4 mr-2" />
+                Schedule New
+              </button>
+            </div>
+            
+            {pickupsLoading ? (
+              <div className="text-center py-8">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-emerald-600 mx-auto mb-2"></div>
+                <p className="text-gray-500">Loading pickups...</p>
+              </div>
+            ) : pickups.length === 0 ? (
+              <div className="text-center py-8">
+                <Package className="h-12 w-12 text-gray-300 mx-auto mb-4" />
+                <p className="text-gray-500">No pickups scheduled yet</p>
+                <button
+                  onClick={() => setShowPickupModal(true)}
+                  className="mt-2 text-emerald-600 hover:text-emerald-700 font-medium"
+                >
+                  Schedule your first pickup
+                </button>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                {pickups.map((pickup) => (
+                  <div key={pickup.id} className="border border-gray-100 rounded-lg p-4 hover:shadow-md transition-shadow">
+                    <div className="flex justify-between items-start">
+                      <div className="flex-1">
+                        <div className="flex items-center mb-2">
+                          <span className={`px-2 py-1 rounded-full text-xs font-medium mr-3 ${getStatusColor(pickup.status)}`}>
+                            {pickup.status.replace('_', ' ')}
+                          </span>
+                          <span className="text-sm text-gray-500">
+                            {new Date(pickup.pickup_date).toLocaleDateString()} at {pickup.pickup_time}
+                          </span>
+                        </div>
+                        <h4 className="font-medium text-gray-900 mb-1">{pickup.items_description}</h4>
+                        <p className="text-sm text-gray-600">Weight: {pickup.estimated_weight} kg</p>
+                        {pickup.recycling_centers && (
+                          <p className="text-sm text-gray-600">Center: {pickup.recycling_centers.name}</p>
+                        )}
+                        {pickup.status === 'in_progress' && (
+                          <p className="text-sm text-blue-600 mt-2">✓ Green Rider has been assigned to your pickup</p>
+                        )}
+                      </div>
+                      <div className="text-right">
+                        {pickup.points_earned > 0 && (
+                          <div className="bg-green-100 text-green-800 px-2 py-1 rounded-full text-sm font-medium">
+                            +{pickup.points_earned} points
+                          </div>
+                        )}
+                        {pickup.status === 'scheduled' && (
+                          <p className="text-xs text-gray-500 mt-2">Waiting for assignment</p>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {activeTab === 'rewards' && (
+        <div className="space-y-6">
+          {/* Points Summary */}
+          <div className="bg-gradient-to-r from-yellow-400 to-orange-500 p-6 rounded-xl text-white">
+            <div className="flex items-center justify-between">
+              <div>
+                <h3 className="text-2xl font-bold">Your GreenPoints</h3>
+                <p className="text-yellow-100">Earned through recycling activities</p>
+              </div>
+              <div className="text-right">
+                <p className="text-4xl font-bold">{currentPoints}</p>
+                <p className="text-yellow-100">Available Points</p>
+              </div>
+            </div>
+          </div>
+
+          {/* Points History */}
+          <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
+            <h3 className="text-lg font-semibold text-gray-900 mb-4">Points History</h3>
+            <div className="space-y-3">
+              {pickups.filter(p => p.points_earned > 0).map((pickup) => (
+                <div key={pickup.id} className="flex items-center justify-between p-3 border border-gray-100 rounded-lg">
+                  <div>
+                    <p className="font-medium text-gray-900">{pickup.items_description}</p>
+                    <p className="text-sm text-gray-500">{new Date(pickup.updated_at).toLocaleDateString()}</p>
+                  </div>
+                  <div className="text-green-600 font-semibold">
+                    +{pickup.points_earned} points
+                  </div>
+                </div>
+              ))}
+              {pickups.filter(p => p.points_earned > 0).length === 0 && (
+                <p className="text-gray-500 text-center py-4">No points earned yet. Complete pickups to earn points!</p>
+              )}
+            </div>
           </div>
         </div>
       )}
