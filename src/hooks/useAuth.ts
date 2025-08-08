@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { User, Session } from '@supabase/supabase-js';
-import { supabase } from '../lib/supabase';
+import { supabase, mockStorage } from '../lib/supabase';
 
 interface UserProfile {
   id: string;
@@ -51,11 +51,21 @@ export const useAuth = () => {
 
   const fetchProfile = async (userId: string) => {
     try {
-      const { data, error } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('id', userId)
-        .single();
+      // Try to get from mock storage first
+      const profiles = mockStorage.getData('profiles');
+      let data = profiles.find((p: any) => p.id === userId);
+      let error = null;
+
+      if (!data) {
+        // Fallback to Supabase
+        const result = await supabase
+          .from('profiles')
+          .select('*')
+          .eq('id', userId)
+          .single();
+        data = result.data;
+        error = result.error;
+      }
 
       if (error) {
         console.error('Error fetching profile:', error);
@@ -75,37 +85,42 @@ export const useAuth = () => {
     user_type: 'consumer' | 'business' | 'facility';
   }) => {
     try {
+      // Create user in mock storage for demo
+      const mockUser = {
+        id: 'user-' + Date.now(),
+        email: email,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
+      } as User;
+      
+      const mockProfile: UserProfile = {
+        id: mockUser.id,
+        email: email,
+        name: userData.name,
+        phone: userData.phone || null,
+        user_type: userData.user_type,
+        points: userData.user_type === 'consumer' ? 100 : 0,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
+      };
+      
+      // Add to mock storage
+      const profiles = mockStorage.getData('profiles');
+      profiles.push(mockProfile);
+      
+      setUser(mockUser);
+      setProfile(mockProfile);
+      
+      return { data: { user: mockUser, session: null }, error: null };
+
+      // Original Supabase code as fallback
       const { data, error } = await supabase.auth.signUp({
         email,
         password,
       });
 
       if (error) {
-        console.log('Supabase signup failed, using demo mode:', error.message);
-        
-        // Create demo user for signup
-        const mockUser = {
-          id: 'demo-user-' + Date.now(),
-          email: email,
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString()
-        } as User;
-        
-        const mockProfile: UserProfile = {
-          id: mockUser.id,
-          email: email,
-          name: userData.name,
-          phone: userData.phone || null,
-          user_type: userData.user_type,
-          points: userData.user_type === 'consumer' ? 100 : 0,
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString()
-        };
-        
-        setUser(mockUser);
-        setProfile(mockProfile);
-        
-        return { data: { user: mockUser, session: null }, error: null };
+        throw error;
       }
 
       if (data.user) {
@@ -170,6 +185,25 @@ export const useAuth = () => {
 
   const signIn = async (email: string, password: string) => {
     try {
+      // Check mock storage first
+      const profiles = mockStorage.getData('profiles');
+      const existingProfile = profiles.find((p: any) => p.email === email);
+      
+      if (existingProfile) {
+        const mockUser = {
+          id: existingProfile.id,
+          email: existingProfile.email,
+          created_at: existingProfile.created_at,
+          updated_at: existingProfile.updated_at
+        } as User;
+        
+        setUser(mockUser);
+        setProfile(existingProfile);
+        
+        return { data: { user: mockUser, session: null }, error: null };
+      }
+
+      // Fallback to Supabase
       const { data, error } = await supabase.auth.signInWithPassword({
         email,
         password,
@@ -250,6 +284,14 @@ export const useAuth = () => {
     if (!user) return { error: 'No user logged in' };
 
     try {
+      // Update in mock storage
+      const updatedProfile = mockStorage.updateData('profiles', user.id, updates);
+      if (updatedProfile) {
+        setProfile(updatedProfile);
+        return { data: updatedProfile, error: null };
+      }
+
+      // Fallback to Supabase
       const { data, error } = await supabase
         .from('profiles')
         .update({ ...updates, updated_at: new Date().toISOString() })
@@ -265,6 +307,19 @@ export const useAuth = () => {
       return { data: null, error };
     }
   };
+
+  // Subscribe to profile changes
+  useEffect(() => {
+    if (!user) return;
+
+    const subscription = mockStorage.subscribe('profiles', (change: any) => {
+      if (change.operation === 'update' && change.data.id === user.id) {
+        setProfile(change.data);
+      }
+    });
+
+    return () => subscription.unsubscribe();
+  }, [user]);
 
   return {
     user,

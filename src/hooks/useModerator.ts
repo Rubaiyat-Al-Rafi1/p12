@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { supabase } from '../lib/supabase';
+import { supabase, mockStorage } from '../lib/supabase';
 
 interface Moderator {
   id: string;
@@ -118,6 +118,41 @@ export const useModerator = () => {
 
   const fetchAllPickups = async (): Promise<PickupWithDetails[]> => {
     try {
+      // Get from mock storage
+      const pickups = mockStorage.getData('pickups');
+      const profiles = mockStorage.getData('profiles');
+      const centers = mockStorage.getData('recycling_centers');
+      const riders = mockStorage.getData('green_riders');
+      
+      // Join the data
+      const pickupsWithDetails = pickups.map((pickup: any) => {
+        const profile = profiles.find((p: any) => p.id === pickup.user_id);
+        const center = centers.find((c: any) => c.id === pickup.center_id);
+        const rider = pickup.assigned_rider_id ? riders.find((r: any) => r.id === pickup.assigned_rider_id) : null;
+        
+        return {
+          ...pickup,
+          profiles: profile ? {
+            name: profile.name,
+            email: profile.email,
+            phone: profile.phone
+          } : null,
+          recycling_centers: center ? {
+            name: center.name,
+            address: center.address,
+            phone: center.phone
+          } : null,
+          green_riders: rider ? {
+            name: rider.name,
+            phone: rider.phone,
+            vehicle_type: rider.vehicle_type
+          } : null
+        };
+      });
+      
+      return pickupsWithDetails;
+
+      // Fallback to Supabase
       const { data, error } = await supabase
         .from('pickups')
         .select(`
@@ -144,40 +179,17 @@ export const useModerator = () => {
       return data || [];
     } catch (err) {
       console.error('Error fetching pickups:', err);
-      // Return mock data for demo
-      return [
-        {
-          id: 'pickup-001',
-          user_id: 'user-001',
-          center_id: 'center-001',
-          pickup_date: new Date().toISOString().split('T')[0],
-          pickup_time: '10:00',
-          items_description: 'Plastic bottles and containers',
-          estimated_weight: 5.5,
-          status: 'scheduled' as const,
-          priority: 'medium' as const,
-          points_earned: 0,
-          moderator_notes: null,
-          assigned_rider_id: null,
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString(),
-          profiles: {
-            name: 'John Doe',
-            email: 'john@example.com',
-            phone: '+880 1234-567890'
-          },
-          recycling_centers: {
-            name: 'Green Center Dhaka',
-            address: 'Gulshan, Dhaka',
-            phone: '+880 1234-567891'
-          }
-        }
-      ];
+      return [];
     }
   };
 
   const fetchAllUsers = async () => {
     try {
+      // Get from mock storage
+      const users = mockStorage.getData('profiles');
+      return users;
+
+      // Fallback to Supabase
       const { data, error } = await supabase
         .from('profiles')
         .select('*')
@@ -187,24 +199,17 @@ export const useModerator = () => {
       return data || [];
     } catch (err) {
       console.error('Error fetching users:', err);
-      // Return mock data for demo
-      return [
-        {
-          id: 'user-001',
-          email: 'john@example.com',
-          name: 'John Doe',
-          phone: '+880 1234-567890',
-          user_type: 'consumer',
-          points: 150,
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString()
-        }
-      ];
+      return [];
     }
   };
 
   const fetchGreenRiders = async (): Promise<GreenRider[]> => {
     try {
+      // Get from mock storage
+      const riders = mockStorage.getData('green_riders');
+      return riders;
+
+      // Fallback to Supabase
       const { data, error } = await supabase
         .from('green_riders')
         .select('*')
@@ -214,29 +219,25 @@ export const useModerator = () => {
       return data || [];
     } catch (err) {
       console.error('Error fetching riders:', err);
-      // Return mock data for demo
-      return [
-        {
-          id: 'rider-001',
-          name: 'Ahmed Rahman',
-          email: 'ahmed@greenloop.bd',
-          phone: '+880 1234-567892',
-          vehicle_type: 'bicycle',
-          license_number: null,
-          is_available: true,
-          current_location_lat: 23.8103,
-          current_location_lng: 90.4125,
-          rating: 4.8,
-          total_pickups: 45,
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString()
-        }
-      ];
+      return [];
     }
   };
 
   const assignPickupToRider = async (pickupId: string, riderId: string, notes?: string) => {
     try {
+      // Update in mock storage
+      const updatedPickup = mockStorage.updateData('pickups', pickupId, {
+        assigned_rider_id: riderId,
+        moderator_notes: notes,
+        status: 'in_progress',
+        updated_at: new Date().toISOString()
+      });
+      
+      if (updatedPickup) {
+        return { success: true, error: null };
+      }
+
+      // Fallback to Supabase
       // Update pickup with assigned rider
       const { error: pickupError } = await supabase
         .from('pickups')
@@ -271,6 +272,42 @@ export const useModerator = () => {
 
   const updatePickupStatus = async (pickupId: string, status: string, notes?: string) => {
     try {
+      // Update in mock storage
+      const updateData: any = {
+        status,
+        updated_at: new Date().toISOString()
+      };
+      
+      if (notes) {
+        updateData.moderator_notes = notes;
+      }
+      
+      // If completing pickup, award points
+      if (status === 'completed') {
+        const pickups = mockStorage.getData('pickups');
+        const pickup = pickups.find((p: any) => p.id === pickupId);
+        if (pickup) {
+          const pointsToAward = Math.round(pickup.estimated_weight * 10); // 10 points per kg
+          updateData.points_earned = pointsToAward;
+          
+          // Update user points
+          const profiles = mockStorage.getData('profiles');
+          const userProfile = profiles.find((p: any) => p.id === pickup.user_id);
+          if (userProfile) {
+            mockStorage.updateData('profiles', pickup.user_id, {
+              points: (userProfile.points || 0) + pointsToAward
+            });
+          }
+        }
+      }
+      
+      const updatedPickup = mockStorage.updateData('pickups', pickupId, updateData);
+      
+      if (updatedPickup) {
+        return { success: true, error: null };
+      }
+
+      // Fallback to Supabase
       const { error } = await supabase
         .from('pickups')
         .update({
@@ -289,6 +326,17 @@ export const useModerator = () => {
 
   const updatePickupPriority = async (pickupId: string, priority: string) => {
     try {
+      // Update in mock storage
+      const updatedPickup = mockStorage.updateData('pickups', pickupId, {
+        priority,
+        updated_at: new Date().toISOString()
+      });
+      
+      if (updatedPickup) {
+        return { success: true, error: null };
+      }
+
+      // Fallback to Supabase
       const { error } = await supabase
         .from('pickups')
         .update({
@@ -306,6 +354,25 @@ export const useModerator = () => {
 
   const createGreenRider = async (riderData: Omit<GreenRider, 'id' | 'rating' | 'total_pickups' | 'created_at' | 'updated_at'>) => {
     try {
+      // Create in mock storage
+      const newRider: GreenRider = {
+        id: 'rider-' + Date.now(),
+        ...riderData,
+        rating: 5.0,
+        total_pickups: 0,
+        is_available: true,
+        current_location_lat: null,
+        current_location_lng: null,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
+      };
+      
+      const riders = mockStorage.getData('green_riders');
+      riders.push(newRider);
+      
+      return { data: newRider, error: null };
+
+      // Fallback to Supabase
       const { data, error } = await supabase
         .from('green_riders')
         .insert({
@@ -321,24 +388,22 @@ export const useModerator = () => {
       return { data, error: null };
     } catch (err: any) {
       console.error('Error creating rider:', err);
-      // For demo, return success
-      const mockRider: GreenRider = {
-        id: 'rider-' + Date.now(),
-        ...riderData,
-        rating: 5.0,
-        total_pickups: 0,
-        is_available: true,
-        current_location_lat: null,
-        current_location_lng: null,
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString()
-      };
-      return { data: mockRider, error: null };
+      return { data: null, error: err };
     }
   };
 
   const updateRiderAvailability = async (riderId: string, isAvailable: boolean) => {
     try {
+      // Update in mock storage
+      const updatedRider = mockStorage.updateData('green_riders', riderId, {
+        is_available: isAvailable
+      });
+      
+      if (updatedRider) {
+        return { success: true, error: null };
+      }
+
+      // Fallback to Supabase
       const { error } = await supabase
         .from('green_riders')
         .update({ is_available: isAvailable })

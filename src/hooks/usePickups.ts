@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { supabase } from '../lib/supabase';
+import { supabase, mockStorage } from '../lib/supabase';
 import { useAuth } from './useAuth';
 
 interface Pickup {
@@ -44,6 +44,30 @@ export const usePickups = () => {
 
     try {
       setLoading(true);
+      
+      // Get from mock storage first
+      const allPickups = mockStorage.getData('pickups');
+      const userPickups = allPickups.filter((p: any) => p.user_id === user.id);
+      
+      // Add center information
+      const centers = mockStorage.getData('recycling_centers');
+      const pickupsWithCenters = userPickups.map((pickup: any) => {
+        const center = centers.find((c: any) => c.id === pickup.center_id);
+        return {
+          ...pickup,
+          recycling_centers: center ? {
+            name: center.name,
+            address: center.address,
+            phone: center.phone
+          } : null
+        };
+      });
+      
+      setPickups(pickupsWithCenters);
+      setError(null);
+      return;
+
+      // Fallback to Supabase
       const { data, error } = await supabase
         .from('pickups')
         .select(`
@@ -62,45 +86,6 @@ export const usePickups = () => {
       setPickups(data || []);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'An error occurred');
-      // Provide mock data for demo
-      setPickups([
-        {
-          id: 'pickup-demo-1',
-          user_id: user.id,
-          center_id: 'center-1',
-          pickup_date: new Date().toISOString().split('T')[0],
-          pickup_time: '10:00',
-          items_description: 'Plastic bottles and paper waste',
-          estimated_weight: 3.5,
-          status: 'completed',
-          points_earned: 35,
-          created_at: new Date(Date.now() - 86400000).toISOString(), // Yesterday
-          updated_at: new Date(Date.now() - 86400000).toISOString(),
-          recycling_centers: {
-            name: 'Green Center Dhaka',
-            address: 'Gulshan, Dhaka',
-            phone: '+880 1234-567890'
-          }
-        },
-        {
-          id: 'pickup-demo-2',
-          user_id: user.id,
-          center_id: 'center-2',
-          pickup_date: new Date(Date.now() + 86400000).toISOString().split('T')[0], // Tomorrow
-          pickup_time: '14:00',
-          items_description: 'Electronic waste - old phone and chargers',
-          estimated_weight: 1.2,
-          status: 'scheduled',
-          points_earned: 0,
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString(),
-          recycling_centers: {
-            name: 'Tech Recycle Center',
-            address: 'Dhanmondi, Dhaka',
-            phone: '+880 1234-567891'
-          }
-        }
-      ]);
     } finally {
       setLoading(false);
     }
@@ -112,6 +97,29 @@ export const usePickups = () => {
     }
 
     try {
+      // Create in mock storage
+      const newPickup = {
+        id: 'pickup-' + Date.now(),
+        user_id: user.id,
+        ...pickupData,
+        status: 'scheduled' as const,
+        priority: 'medium',
+        points_earned: 0,
+        moderator_notes: null,
+        assigned_rider_id: null,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
+      };
+      
+      const pickups = mockStorage.getData('pickups');
+      pickups.push(newPickup);
+      
+      // Refresh pickups list
+      await fetchPickups();
+      
+      return { data: newPickup, error: null };
+
+      // Fallback to Supabase
       const { data, error } = await supabase
         .from('pickups')
         .insert({
@@ -136,6 +144,37 @@ export const usePickups = () => {
 
   const updatePickupStatus = async (pickupId: string, status: Pickup['status'], pointsEarned?: number) => {
     try {
+      // Update in mock storage
+      const updateData: any = { 
+        status, 
+        updated_at: new Date().toISOString() 
+      };
+      
+      if (pointsEarned !== undefined) {
+        updateData.points_earned = pointsEarned;
+      }
+      
+      const updatedPickup = mockStorage.updateData('pickups', pickupId, updateData);
+      
+      if (updatedPickup) {
+        // If pickup is completed and points were earned, update user's total points
+        if (status === 'completed' && pointsEarned && user) {
+          const profiles = mockStorage.getData('profiles');
+          const userProfile = profiles.find((p: any) => p.id === user.id);
+          if (userProfile) {
+            mockStorage.updateData('profiles', user.id, {
+              points: (userProfile.points || 0) + pointsEarned
+            });
+          }
+        }
+        
+        // Refresh pickups list
+        await fetchPickups();
+        
+        return { data: updatedPickup, error: null };
+      }
+
+      // Fallback to Supabase
       const updateData: any = { 
         status, 
         updated_at: new Date().toISOString() 
@@ -177,6 +216,15 @@ export const usePickups = () => {
 
   useEffect(() => {
     fetchPickups();
+    
+    // Subscribe to pickup changes
+    const subscription = mockStorage.subscribe('pickups', (change: any) => {
+      if (change.operation === 'update' || change.operation === 'insert') {
+        fetchPickups(); // Refresh when pickups change
+      }
+    });
+
+    return () => subscription.unsubscribe();
   }, [user]);
 
   return {

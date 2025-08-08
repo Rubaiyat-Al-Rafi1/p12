@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { supabase } from '../lib/supabase';
+import { supabase, mockStorage } from '../lib/supabase';
 
 interface RecyclingCenter {
   id: string;
@@ -24,6 +24,14 @@ export const useRecyclingCenters = () => {
   const fetchCenters = async () => {
     try {
       setLoading(true);
+      
+      // Get from mock storage first
+      const centers = mockStorage.getData('recycling_centers');
+      setCenters(centers);
+      setError(null);
+      return;
+
+      // Fallback to Supabase
       const { data, error } = await supabase
         .from('recycling_centers')
         .select('*')
@@ -34,48 +42,6 @@ export const useRecyclingCenters = () => {
       setCenters(data || []);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'An error occurred');
-      // Provide mock data for demo
-      setCenters([
-        {
-          id: 'center-1',
-          name: 'Green Center Dhaka',
-          address: 'House 45, Road 12, Gulshan-1, Dhaka',
-          latitude: 23.7808,
-          longitude: 90.4142,
-          phone: '+880 1234-567890',
-          email: 'gulshan@greenloop.bd',
-          operating_hours: '9:00 AM - 6:00 PM',
-          accepted_materials: ['Plastic', 'Paper', 'Glass', 'Metal'],
-          rating: 4.5,
-          capacity_status: 'medium'
-        },
-        {
-          id: 'center-2',
-          name: 'Tech Recycle Center',
-          address: 'Plot 23, Dhanmondi R/A, Dhaka',
-          latitude: 23.7461,
-          longitude: 90.3742,
-          phone: '+880 1234-567891',
-          email: 'dhanmondi@greenloop.bd',
-          operating_hours: '10:00 AM - 7:00 PM',
-          accepted_materials: ['Electronics', 'Batteries', 'Cables'],
-          rating: 4.8,
-          capacity_status: 'high'
-        },
-        {
-          id: 'center-3',
-          name: 'Eco Waste Solutions',
-          address: 'Sector 7, Uttara, Dhaka',
-          latitude: 23.8759,
-          longitude: 90.3795,
-          phone: '+880 1234-567892',
-          email: 'uttara@greenloop.bd',
-          operating_hours: '8:00 AM - 5:00 PM',
-          accepted_materials: ['Organic', 'Paper', 'Cardboard'],
-          rating: 4.2,
-          capacity_status: 'low'
-        }
-      ]);
     } finally {
       setLoading(false);
     }
