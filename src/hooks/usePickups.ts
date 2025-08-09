@@ -175,14 +175,6 @@ export const usePickups = () => {
       }
 
       // Fallback to Supabase
-      const updateData: any = { 
-        status, 
-        updated_at: new Date().toISOString() 
-      };
-      
-      if (pointsEarned !== undefined) {
-        updateData.points_earned = pointsEarned;
-      }
 
       const { data, error } = await supabase
         .from('pickups')
