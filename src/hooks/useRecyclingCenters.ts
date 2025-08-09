@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { supabase, mockStorage } from '../lib/supabase';
+import { supabase } from '../lib/supabase';
 
 interface RecyclingCenter {
   id: string;
@@ -25,13 +25,6 @@ export const useRecyclingCenters = () => {
     try {
       setLoading(true);
       
-      // Get from mock storage first
-      const centers = mockStorage.getData('recycling_centers');
-      setCenters(centers);
-      setError(null);
-      return;
-
-      // Fallback to Supabase
       const { data, error } = await supabase
         .from('recycling_centers')
         .select('*')
@@ -40,7 +33,9 @@ export const useRecyclingCenters = () => {
       if (error) throw error;
 
       setCenters(data || []);
+      setError(null);
     } catch (err) {
+      console.error('Error fetching centers:', err);
       setError(err instanceof Error ? err.message : 'An error occurred');
     } finally {
       setLoading(false);

@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { User, Session } from '@supabase/supabase-js';
-import { supabase, mockStorage } from '../lib/supabase';
+import { supabase } from '../lib/supabase';
 
 interface UserProfile {
   id: string;
@@ -51,21 +51,11 @@ export const useAuth = () => {
 
   const fetchProfile = async (userId: string) => {
     try {
-      // Try to get from mock storage first
-      const profiles = mockStorage.getData('profiles');
-      let data = profiles.find((p: any) => p.id === userId);
-      let error = null;
-
-      if (!data) {
-        // Fallback to Supabase
-        const result = await supabase
-          .from('profiles')
-          .select('*')
-          .eq('id', userId)
-          .single();
-        data = result.data;
-        error = result.error;
-      }
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', userId)
+        .single();
 
       if (error) {
         console.error('Error fetching profile:', error);
@@ -85,46 +75,16 @@ export const useAuth = () => {
     user_type: 'consumer' | 'business' | 'facility';
   }) => {
     try {
-      // Create user in mock storage for demo
-      const mockUser = {
-        id: 'user-' + Date.now(),
-        email: email,
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString()
-      } as User;
-      
-      const mockProfile: UserProfile = {
-        id: mockUser.id,
-        email: email,
-        name: userData.name,
-        phone: userData.phone || null,
-        user_type: userData.user_type,
-        points: userData.user_type === 'consumer' ? 100 : 0,
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString()
-      };
-      
-      // Add to mock storage
-      const profiles = mockStorage.getData('profiles');
-      profiles.push(mockProfile);
-      
-      setUser(mockUser);
-      setProfile(mockProfile);
-      
-      return { data: { user: mockUser, session: null }, error: null };
-
-      // Original Supabase code as fallback
+      // Create user with Supabase Auth
       const { data, error } = await supabase.auth.signUp({
         email,
         password,
       });
 
-      if (error) {
-        throw error;
-      }
+      if (error) throw error;
 
       if (data.user) {
-        // Create profile
+        // Create profile in profiles table
         const { error: profileError } = await supabase
           .from('profiles')
           .insert({
@@ -138,132 +98,30 @@ export const useAuth = () => {
 
         if (profileError) {
           console.error('Error creating profile:', profileError);
-          // For demo, create a mock profile if database fails
-          const mockProfile: UserProfile = {
-            id: data.user.id,
-            email: data.user.email!,
-            name: userData.name,
-            phone: userData.phone || null,
-            user_type: userData.user_type,
-            points: userData.user_type === 'consumer' ? 100 : 0,
-            created_at: new Date().toISOString(),
-            updated_at: new Date().toISOString()
-          };
-          setProfile(mockProfile);
+          throw profileError;
         }
       }
 
       return { data, error: null };
     } catch (error) {
-      console.log('Signup error, using demo mode:', error);
-      
-      // Create demo user as fallback
-      const mockUser = {
-        id: 'demo-user-' + Date.now(),
-        email: email,
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString()
-      } as User;
-      
-      const mockProfile: UserProfile = {
-        id: mockUser.id,
-        email: email,
-        name: userData.name,
-        phone: userData.phone || null,
-        user_type: userData.user_type,
-        points: userData.user_type === 'consumer' ? 100 : 0,
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString()
-      };
-      
-      setUser(mockUser);
-      setProfile(mockProfile);
-      
-      return { data: { user: mockUser, session: null }, error: null };
+      console.error('Signup error:', error);
+      return { data: null, error };
     }
   };
 
   const signIn = async (email: string, password: string) => {
     try {
-      // Check mock storage first
-      const profiles = mockStorage.getData('profiles');
-      const existingProfile = profiles.find((p: any) => p.email === email);
-      
-      if (existingProfile) {
-        const mockUser = {
-          id: existingProfile.id,
-          email: existingProfile.email,
-          created_at: existingProfile.created_at,
-          updated_at: existingProfile.updated_at
-        } as User;
-        
-        setUser(mockUser);
-        setProfile(existingProfile);
-        
-        return { data: { user: mockUser, session: null }, error: null };
-      }
-
-      // Fallback to Supabase
       const { data, error } = await supabase.auth.signInWithPassword({
         email,
         password,
       });
 
-      // If Supabase auth fails, create a demo session for testing
-      if (error) {
-        console.log('Supabase auth failed, using demo mode:', error.message);
-        
-        const mockUser = {
-          id: 'demo-user-' + Date.now(),
-          email: email,
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString()
-        } as User;
-        
-        const mockProfile: UserProfile = {
-          id: mockUser.id,
-          email: email,
-          name: email.split('@')[0].replace(/[^a-zA-Z]/g, ' ').trim() || 'Demo User',
-          phone: null,
-          user_type: 'consumer',
-          points: 150,
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString()
-        };
-        
-        setUser(mockUser);
-        setProfile(mockProfile);
-        
-        return { data: { user: mockUser, session: null }, error: null };
-      }
+      if (error) throw error;
 
-      return { data, error };
+      return { data, error: null };
     } catch (error) {
-      console.log('Sign in error, using demo mode:', error);
-      
-      // Create demo session as fallback
-      const mockUser = {
-        id: 'demo-user-' + Date.now(),
-        email: email,
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString()
-      } as User;
-      
-      const mockProfile: UserProfile = {
-        id: mockUser.id,
-        email: email,
-        name: email.split('@')[0].replace(/[^a-zA-Z]/g, ' ').trim() || 'Demo User',
-        phone: null,
-        user_type: 'consumer',
-        points: 150,
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString()
-      };
-      
-      setUser(mockUser);
-      setProfile(mockProfile);
-      
-      return { data: { user: mockUser, session: null }, error: null };
+      console.error('Sign in error:', error);
+      return { data: null, error };
     }
   };
 
@@ -284,14 +142,6 @@ export const useAuth = () => {
     if (!user) return { error: 'No user logged in' };
 
     try {
-      // Update in mock storage
-      const updatedProfile = mockStorage.updateData('profiles', user.id, updates);
-      if (updatedProfile) {
-        setProfile(updatedProfile);
-        return { data: updatedProfile, error: null };
-      }
-
-      // Fallback to Supabase
       const { data, error } = await supabase
         .from('profiles')
         .update({ ...updates, updated_at: new Date().toISOString() })
@@ -307,19 +157,6 @@ export const useAuth = () => {
       return { data: null, error };
     }
   };
-
-  // Subscribe to profile changes
-  useEffect(() => {
-    if (!user) return;
-
-    const subscription = mockStorage.subscribe('profiles', (change: any) => {
-      if (change.operation === 'update' && change.data.id === user.id) {
-        setProfile(change.data);
-      }
-    });
-
-    return () => subscription.unsubscribe();
-  }, [user]);
 
   return {
     user,

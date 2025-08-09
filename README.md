@@ -27,6 +27,18 @@ A comprehensive recycling management system built for Bangladesh, connecting use
 
 ## 🔐 Login Instructions
 
+### ⚠️ Important: Supabase Setup Required
+
+**Before using the application, you need to connect to Supabase:**
+
+1. **Click "Connect to Supabase"** button in the top right corner of the interface
+2. **Set up your Supabase project** with the provided database schema
+3. **Configure environment variables** in the `.env` file:
+   ```
+   VITE_SUPABASE_URL=your_supabase_project_url
+   VITE_SUPABASE_ANON_KEY=your_supabase_anon_key
+   ```
+
 ### Regular Users
 1. Click "Get Started" or "Sign In" on the homepage
 2. Choose your account type:
@@ -38,8 +50,8 @@ A comprehensive recycling management system built for Bangladesh, connecting use
 
 ### Moderator Access
 1. Click "Moderator Access" in the footer
-2. Use these credentials:
-   - **Email**: `moderator@gmail.com`
+2. **First, create a moderator account in your Supabase database**, then use:
+   - **Email**: Your moderator email
    - **Password**: `md1234`
 3. Access the full moderator control panel
 
@@ -70,6 +82,24 @@ A comprehensive recycling management system built for Bangladesh, connecting use
 - **Authentication**: Supabase Auth
 - **Build Tool**: Vite
 - **Deployment**: Netlify Ready
+
+## 🔧 Database Setup
+
+The application now uses **real Supabase integration** instead of mock data. You need to:
+
+1. **Create a Supabase project** at [supabase.com](https://supabase.com)
+2. **Run the provided SQL migrations** to create the database schema
+3. **Set up Row Level Security (RLS)** policies
+4. **Configure authentication** settings
+5. **Add environment variables** to your project
+
+### Required Tables:
+- `profiles` - User information and account details
+- `recycling_centers` - Facility locations and capabilities  
+- `pickups` - Scheduled pickup requests
+- `green_riders` - Delivery/pickup personnel
+- `moderators` - System administrator accounts
+- `recycling_activities` - Activity tracking and points
 
 ## 📊 Database Schema
 
@@ -105,9 +135,11 @@ A comprehensive recycling management system built for Bangladesh, connecting use
 
 1. **Clone the repository**
 2. **Install dependencies**: `npm install`
-3. **Set up environment variables** (Supabase credentials)
-4. **Run development server**: `npm run dev`
-5. **Access the application** at `http://localhost:5173`
+3. **Connect to Supabase** using the "Connect to Supabase" button
+4. **Set up your database** with the provided migrations
+5. **Configure environment variables** in `.env` file
+6. **Run development server**: `npm run dev`
+7. **Access the application** at `http://localhost:5173`
 
 ## 🔧 Environment Setup
 
@@ -116,6 +148,19 @@ Create a `.env` file with:
 VITE_SUPABASE_URL=your_supabase_url
 VITE_SUPABASE_ANON_KEY=your_supabase_anon_key
 ```
+
+## 🔑 Authentication Flow
+
+### User Registration & Login:
+1. **Real Supabase Auth** - Users register with email/password
+2. **Profile Creation** - Automatic profile creation in `profiles` table
+3. **Session Management** - Persistent login sessions
+4. **Role-based Access** - Different dashboards for different user types
+
+### Moderator Access:
+1. **Database Authentication** - Moderators stored in `moderators` table
+2. **Permission System** - Role-based permissions for different actions
+3. **Secure Access** - Separate authentication flow from regular users
 
 ## 📱 Responsive Design
 
@@ -134,10 +179,12 @@ VITE_SUPABASE_ANON_KEY=your_supabase_anon_key
 ## 🔒 Security Features
 
 - **Authentication**: Secure user login and session management
+- **Row Level Security (RLS)**: Database-level security policies
 - **Authorization**: Role-based access control
 - **Data Protection**: Encrypted sensitive information
 - **Input Validation**: Comprehensive form validation
 - **SQL Injection Prevention**: Parameterized queries
+- **Real-time Security**: Supabase real-time subscriptions with security
 
 ## 📈 Future Enhancements
 
